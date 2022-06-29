@@ -5,7 +5,7 @@ import cv2
 import numpy as np
 from matplotlib import pyplot as plt
 
-from display import Display3D
+from display import Display2D, Display3D
 
 
 class AnnotatedFrame:
@@ -38,12 +38,12 @@ class AnnotatedFrame:
         matches = bf.knnMatch(f1.descriptors, f2.descriptors, k=2)
 
         # Perform Lowe's ratio test to filter out low-signal points.
-        pts1, pts2 = [], []
+        kp1, kp2 = [], []
 
-        for i, (m, n) in enumerate(matches):
+        for m, n in matches:
             if m.distance < 0.75 * n.distance:
-                pts2.append(f2.keypoints[m.trainIdx].pt)
-                pts1.append(f1.keypoints[m.queryIdx].pt)
+                kp2.append(f2.keypoints[m.trainIdx].pt)
+                kp1.append(f1.keypoints[m.queryIdx].pt)
 
         pts1 = np.float64(pts1)
         pts2 = np.float64(pts2)
@@ -68,7 +68,7 @@ class AnnotatedFrame:
         Rt[:3, :3] = R
         Rt[:3, 3] = t.ravel()
 
-        return Rt, pts
+        return Rt, pts, kp1, kp2
 
 
 class SLAM:
@@ -91,25 +91,46 @@ class SLAM:
             self.points = self.cameras[-1] @ pts
         else:
             self.points = np.hstack((self.points, self.cameras[-1] @ pts))
-        return self.cameras[-1]
+        return self.cameras[-1], pts
 
 
 if __name__ == "__main__":
     slam = SLAM()
-    display = Display3D()
-    cap = cv2.VideoCapture("production.mp4")
+    disp2d = Display2D()
+    disp3d = Display3D()
+    cap = cv2.VideoCapture("video_color.mp4")
     while cap.isOpened():
-        ret, frame = cap.read()
+        ret, img = cap.read()
         if not ret:
             break
         K = np.array(
-            [[525, 0, frame.shape[1] // 2], [0, 525, frame.shape[0] // 2], [0, 0, 1]]
+            [[707.0912, 0, img.shape[1] // 2], [0, 707.0912, img.shape[0] // 2], [0, 0, 1]]
         )
-        frame = AnnotatedFrame(frame, K)
+        frame = AnnotatedFrame(img, K)
         # frame.render()
-        p = slam.localize(frame)
-        display.paint(slam.cameras, slam.points)
-        print(p)
+        cam, pts = slam.localize(frame)
+        # draw the keypoints on the image
+        for keypoint in frame.keypoints:
+            cv2.circle(img, keypoint, color=(0,0,0), radius=3)
+        # draw the correspondence lines from the previous image
+        for pt in pts:
+            if len(self.pts[i1].frames) >= 5:
+                cv2.circle(img, (u1, v1), color=(0,255,0), radius=3)
+            else:
+            cv2.circle(img, (u1, v1), color=(0,128,0), radius=3)
+            # draw the trail
+            pts = []
+            lfid = None
+            for f, idx in zip(self.pts[i1].frames[-9:][::-1], self.pts[i1].idxs[-9:][::-1]):
+            if lfid is not None and lfid-1 != f.id:
+                break
+            pts.append(tuple(map(lambda x: int(round(x)), f.kpus[idx])))
+            lfid = f.id
+            if len(pts) >= 2:
+                cv2.polylines(img, np.array([pts], dtype=np.int32), False, myjet[len(pts)]*255, thickness=1, lineType=16)
+        disp2d.paint(frame)
+        disp3d.paint(slam.cameras, slam.points)
+        print("localized points", len(pts))
         cv2.waitKey(0)
 
     # time.sleep(10000)
