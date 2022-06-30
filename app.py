@@ -81,7 +81,7 @@ class SLAM:
         if len(self.frames) == 0:
             self.frames = [f2]
             self.cameras = [np.eye(4)]
-            return np.eye(4)
+            return np.eye(4), []
 
         Rt, pts = AnnotatedFrame.reconstruct(self.frames[-1], f2)
 
@@ -96,7 +96,7 @@ class SLAM:
 
 if __name__ == "__main__":
     slam = SLAM()
-    disp2d = Display2D()
+    # disp2d = Display2D()
     disp3d = Display3D()
     cap = cv2.VideoCapture("video_color.mp4")
     while cap.isOpened():
@@ -104,31 +104,35 @@ if __name__ == "__main__":
         if not ret:
             break
         K = np.array(
-            [[707.0912, 0, img.shape[1] // 2], [0, 707.0912, img.shape[0] // 2], [0, 0, 1]]
+            [
+                [707.0912, 0, img.shape[1] // 2],
+                [0, 707.0912, img.shape[0] // 2],
+                [0, 0, 1],
+            ]
         )
         frame = AnnotatedFrame(img, K)
         # frame.render()
         cam, pts = slam.localize(frame)
         # draw the keypoints on the image
-        for keypoint in frame.keypoints:
-            cv2.circle(img, keypoint, color=(0,0,0), radius=3)
+        # for keypoint in frame.keypoints:
+        #     cv2.circle(img, keypoint, color=(0,0,0), radius=3)
         # draw the correspondence lines from the previous image
-        for pt in pts:
-            if len(self.pts[i1].frames) >= 5:
-                cv2.circle(img, (u1, v1), color=(0,255,0), radius=3)
-            else:
-            cv2.circle(img, (u1, v1), color=(0,128,0), radius=3)
-            # draw the trail
-            pts = []
-            lfid = None
-            for f, idx in zip(self.pts[i1].frames[-9:][::-1], self.pts[i1].idxs[-9:][::-1]):
-            if lfid is not None and lfid-1 != f.id:
-                break
-            pts.append(tuple(map(lambda x: int(round(x)), f.kpus[idx])))
-            lfid = f.id
-            if len(pts) >= 2:
-                cv2.polylines(img, np.array([pts], dtype=np.int32), False, myjet[len(pts)]*255, thickness=1, lineType=16)
-        disp2d.paint(frame)
+        # for pt in pts:
+        #     if len(self.pts[i1].frames) >= 5:
+        #         cv2.circle(img, (u1, v1), color=(0,255,0), radius=3)
+        #     else:
+        #     cv2.circle(img, (u1, v1), color=(0,128,0), radius=3)
+        #     # draw the trail
+        #     pts = []
+        #     lfid = None
+        #     for f, idx in zip(self.pts[i1].frames[-9:][::-1], self.pts[i1].idxs[-9:][::-1]):
+        #     if lfid is not None and lfid-1 != f.id:
+        #         break
+        #     pts.append(tuple(map(lambda x: int(round(x)), f.kpus[idx])))
+        #     lfid = f.id
+        #     if len(pts) >= 2:
+        #         cv2.polylines(img, np.array([pts], dtype=np.int32), False, myjet[len(pts)]*255, thickness=1, lineType=16)
+        # disp2d.paint(img)
         disp3d.paint(slam.cameras, slam.points)
         print("localized points", len(pts))
         cv2.waitKey(0)

@@ -1,6 +1,6 @@
 from multiprocessing import Process, Queue
 from typing import List
-import pangolin
+import pypangolin as pangolin
 import OpenGL.GL as gl
 import numpy as np
 import pygame
@@ -20,6 +20,39 @@ class Display2D(object):
         pygame.surfarray.blit_array(self.surface, img.swapaxes(0, 1)[:, :, [0, 1, 2]])
         self.screen.blit(self.surface, (0, 0))
         pygame.display.flip()
+
+
+def draw_camera(pose, w=1.0, h_ratio=0.75, z_ratio=0.6):
+    h = w * h_ratio
+    z = w * z_ratio
+
+    gl.glPushMatrix()
+    gl.glMultTransposeMatrixd(pose)
+
+    gl.glBegin(gl.GL_LINES)
+    gl.glVertex3f(0, 0, 0)
+    gl.glVertex3f(w, h, z)
+    gl.glVertex3f(0, 0, 0)
+    gl.glVertex3f(w, -h, z)
+    gl.glVertex3f(0, 0, 0)
+    gl.glVertex3f(-w, -h, z)
+    gl.glVertex3f(0, 0, 0)
+    gl.glVertex3f(-w, h, z)
+
+    gl.glVertex3f(w, h, z)
+    gl.glVertex3f(w, -h, z)
+
+    gl.glVertex3f(-w, h, z)
+    gl.glVertex3f(-w, -h, z)
+
+    gl.glVertex3f(-w, h, z)
+    gl.glVertex3f(w, h, z)
+
+    gl.glVertex3f(-w, -h, z)
+    gl.glVertex3f(w, -h, z)
+    gl.glEnd()
+
+    gl.glPopMatrix()
 
 
 class Display3D(object):
@@ -47,7 +80,13 @@ class Display3D(object):
 
         # Create Interactive View in window
         self.dcam = pangolin.CreateDisplay()
-        self.dcam.SetBounds(0.0, 1.0, 0.0, 1.0, w / h)
+        self.dcam.SetBounds(
+            pangolin.Attach(0),
+            pangolin.Attach(1),
+            pangolin.Attach(0),
+            pangolin.Attach(1),
+            w / h,
+        )
         self.dcam.SetHandler(self.handler)
         # hack to avoid small Pangolin, no idea why it's *2
         self.dcam.Resize(pangolin.Viewport(0, 0, w * 2, h * 2))
@@ -65,12 +104,13 @@ class Display3D(object):
             if len(self.state[0]) > 1:
                 # draw poses
                 gl.glColor3f(0.0, 1.0, 0.0)
-                pangolin.DrawCameras(self.state[0][:-1])
+                for pose in self.state[0][:-1]:
+                    draw_camera(pose)
 
             if len(self.state[0]) > 0:
                 # draw current pose as yellow
                 gl.glColor3f(1.0, 1.0, 0.0)
-                pangolin.DrawCamera(self.state[0][-1])
+                draw_camera(self.state[0][-1])
 
             if self.state[1] is not None and len(self.state[1]) > 0:
                 # draw keypoints
